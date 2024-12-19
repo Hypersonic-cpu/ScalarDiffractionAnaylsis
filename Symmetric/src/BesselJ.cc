@@ -17,7 +17,7 @@ using std::cin;
 using std::endl;
 
 constexpr int N = 1;
-constexpr int Terms = 100; // 100000;
+constexpr int Terms = 100000;
 std::string const OutputCsvPrefix = "/Users/kong/Documents/Proj/NumericalC/DataGen/CylindarTest/";
 vector< vector<double> > BesselRoots (N);
 vector< double > phi (Terms, 0);

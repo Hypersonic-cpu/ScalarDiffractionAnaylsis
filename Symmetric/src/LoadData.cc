@@ -1,19 +1,21 @@
 #include "LoadData.h"
 
 #include <cmath>
+#include <ios>
+#include <sstream>
 #include <vector>
 #include <string>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 
 bool
 WriteLn(vector<R> arr, std::ofstream& f) {
   if (arr.empty() || !f.is_open()) return false;
-  f.precision(8);
-  f << arr[0];
+  f << std::scientific << std::setprecision(8) << arr[0];
   for (auto it = arr.begin()+1;
        it != arr.end(); it++) {
-    f << "," << *(it);
+    f << "," << std::scientific << std::setprecision(8) << *(it);
   }
   f << std::endl;
   return true;
@@ -23,12 +25,14 @@ inline std::string
 CtoRI(C z){
   auto real = GSL_REAL(z);
   auto imag = GSL_IMAG(z);
-  return 
-    (real > 0 ? "+" : "-")
-    + std::to_string(std::fabs(real))
-    + (imag > 0 ? "+" : "-")
-    + std::to_string(std::fabs(imag))
-    + "i";
+  std::stringstream ss;
+  ss << std::scientific << std::setprecision(8)
+    << (real > 0 ? "+" : "-")
+    << std::fabs(real)
+    << (imag > 0 ? "+" : "-")
+    << std::fabs(imag)
+    << "i";
+  return ss.str();
 }
 
 bool
