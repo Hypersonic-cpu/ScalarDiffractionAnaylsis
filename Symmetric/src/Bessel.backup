@@ -1,0 +1,75 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <cmath>
+#include <gsl/gsl_sf_bessel.h>
+
+#include "LoadData.h"
+
+using std::vector;
+using std::cout;
+using std::cin;
+using std::endl;
+
+constexpr int N = 6;
+constexpr int Terms = 2000;
+std::string const BesselRootTSVPath = "/Users/kong/Documents/Proj/NumericalC/Database/BesselRoots.tsv";
+vector< vector<double> > BesselRoots (N);
+vector< double > phi;
+
+constexpr int Plots = 26;
+vector< double > dx (Plots);
+vector< double > dy;
+
+// auto objf = [](double x){ return x * x };
+double PhiOfX2 (double root0M) {
+  double J1 = gsl_sf_bessel_J1(root0M);
+  double num = 
+    (root0M * root0M - 4.0) 
+    * J1 / std::pow(root0M, 3);
+  double den = std::pow(J1, 2) / 2; 
+  return num / den;
+}
+    
+int
+main (void)
+{
+  // double y = gsl_sf_bessel_J0 (x);
+  // printf ("J0(%g) = %.18e\n", x, y);
+
+  /* Read Roots of BesselJn */ 
+  {
+    std::ifstream ifs (BesselRootTSVPath);
+    LoadBesselRoots(ifs, BesselRoots, N, Terms);
+    ifs.close();
+  }
+
+  phi.clear();
+  phi.reserve(Terms+1);
+  for (auto root: BesselRoots[0]) {
+    phi.push_back(PhiOfX2(root));
+  }
+
+  // for (auto i = 0; i < Terms; i += 20) {
+  //   printf("Phi[%d]\t%.10e\n", i, phi[i]);
+  // }
+
+  for (auto i = 0; i < Plots; ++i) {
+    dx[i] = 1.0 * i / (Plots-1);
+  }
+  dy.clear();
+  dy.reserve(Plots);
+  for (auto x: dx) {
+    double res = 0.0;
+    for (auto i = 0; i < Terms; ++i) {
+      res += phi[i] * gsl_sf_bessel_J0(BesselRoots[0][i] * x);
+    }
+    dy.push_back(res);
+  }
+  for (auto i = 0; i < Plots; ++i) {
+    printf("%.8f\t%.8f\t%.8f\n", dx[i], dx[i]*dx[i], dy[i]);
+  }
+  return 0;
+}
+
