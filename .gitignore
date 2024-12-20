@@ -3,5 +3,6 @@ DataGen/
 Database/
 Try/
 gsl-2.8/
-Symmetric/compile_flags.txt
-Symmetric/build/
+*/compile_flags.txt
+.vscode/
+*/build/
