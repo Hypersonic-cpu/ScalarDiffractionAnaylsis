@@ -17,8 +17,8 @@ using std::cin;
 using std::endl;
 
 constexpr int N = 1;
-constexpr int Terms = 100; // 100000;
-std::string const OutputCsvPrefix = "/Users/kong/Documents/Proj/NumericalC/DataGen/CylindarTest/";
+constexpr int Terms = 50000; // 100000;
+std::string const OutputCsvPrefix = "/Users/kong/Documents/Proj/NumericalC/DataGen/NSensitivityTest/";
 vector< vector<double> > BesselRoots (N);
 vector< double > phi (Terms, 0);
 
@@ -30,7 +30,7 @@ vector< double > dz;
 vector< vector<gsl_complex> > val (Layers);
 
 double const RadiusB = 0.10e-3; // 100 um 
-double const RadiusA = 0.04e-3;
+double const RadiusA = 0.00e-3; // 40 um
 double const RadiusL = 99e-3; // 50 mm
 double const WaveLen = 1000.0e-9;
 double const WaveNumK= 2.0 * M_PI / WaveLen;
@@ -57,11 +57,11 @@ CalcRhoAtZ0(const vector<double>& dx, vector<gsl_complex>& ret, double z0) {
     for (auto i = 0; i < Terms; ++i) {
       auto lambdaI = std::pow(BesselRoots[0][i] / RadiusL, 2);
       auto waveKI  = std::sqrt(WaveNumK * WaveNumK - lambdaI);
-      auto mikz = gsl_complex_polar(1,-waveKI * z0);
+      auto emikz = gsl_complex_polar(1,-waveKI * z0);
       auto coef = phi[i] * gsl_sf_bessel_J0(BesselRoots[0][i] / RadiusL * x);
       res = gsl_complex_add(
                             res, 
-                            gsl_complex_mul_real(gsl_complex_exp(mikz), coef)
+                            gsl_complex_mul_real(emikz, coef)
                             );
     }
     ret[n] = res;
@@ -78,9 +78,6 @@ main (int argc, char* argv[])
 
   /* Read Roots of BesselJn */ 
   {
-    // std::ifstream ifs (BesselRootTSVPath);
-    // LoadBesselRoots(ifs, BesselRoots, N, Terms);
-    // ifs.close();
     for (auto nu = 0; nu < N; ++nu) {
       BesselRoots[nu].clear();
       BesselRoots[nu].reserve(Terms+2);
@@ -90,10 +87,6 @@ main (int argc, char* argv[])
         }
       }
     }
-    // for (unsigned m = 0; m < 10; ++m) {
-    //   printf("%.8f ", BesselRoots[0][m]);
-    // }
-    // printf("\n");
   }
 
   auto tRootOver = std::chrono::high_resolution_clock::now();
@@ -130,19 +123,19 @@ main (int argc, char* argv[])
   for (int i = 0; i < Layers; i++) {
     gsl_complex zero;
     GSL_SET_COMPLEX(&zero, 0, 0);
-    val[i].assign(Terms, zero);
-    auto z= Z0 * i / (Layers-1); 
-    printf("\tCalc Layers %d\tat Z = %.8f\n", i, z);
-    CalcRhoAtZ0(dx, val[i], z);
+    val[i].clear();
+    val[i].assign(Plots, zero);
+    printf("\tCalc Layers %d\tat Z = %.8f\n", i, dz[i]);
+    CalcRhoAtZ0(dx, val[i], dz[i]);
   }
   printf("Layers Complete.\n");
 
   auto tEval = std::chrono::high_resolution_clock::now();
 
   auto writer = CSVWriter(OutputCsvPrefix);
-  writer.WriteVector(dz, "dz-test.csv");
-  writer.WriteVector(dx, "dx-test.csv");
-  writer.WriteMatrix(val, "val-test.csv");
+  writer.WriteVector(dz ,  "dz-N" + std::to_string(Terms/1000) + "k.csv");
+  writer.WriteVector(dx ,  "dx-N" + std::to_string(Terms/1000) + "k.csv");
+  writer.WriteMatrix(val, "val-N" + std::to_string(Terms/1000) + "k.csv");
   
   auto durationRoot = std::chrono::duration_cast<std::chrono::milliseconds>(tRootOver - tStart);
   auto durationParam= std::chrono::duration_cast<std::chrono::milliseconds>(tPhiParam - tRootOver);
@@ -154,4 +147,12 @@ main (int argc, char* argv[])
         );
   return 0;
 }
-
+/* 
+ * 200 Z-Layer, 100 Rho-Plots.
+ *     N,     Time,
+ *   2k,   8189ms,
+ *   5k,  21133ms,
+ *  10k,  43013ms,
+ *  20k,  93260ms,
+ *  50k,       ms.
+ */
