@@ -6,11 +6,13 @@
 #include <chrono>
 #include <cstdio>
 #include <print>
+
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_complex.h>
 #include <gsl/gsl_complex_math.h>
 
 #include "LoadData.h"
+#include "ValueServe.h"
 
 using std::vector;
 using std::print;
@@ -37,49 +39,6 @@ double const RadiusL = 99e-3; // 50 mm
 double const WaveLen = 1000.0e-9;
 double const WaveNumK= 2.0 * M_PI / WaveLen;
 
-/* PARAM CALCULATION */
-/// Integrate x * J_n(x) in [xstrt, xend].
-double BesselIntegral(int n, double xstrt, double xend) {
-  return 0.0; // [TODO]
-}
-
-/// Integrate Theta_{+n} = cos nx or Theta_{-n} = sin dx.
-/// Vector length is 2n+1;
-inline void 
-ThetaEigenIntegral(vector<double>& v) {
-  auto n = v.size() >> 1;
-  for (auto i = 0; i <= n; ++i) {
-    //TODO: Cosine.
-  }
-  for (auto i = n+1; i < 2*n+1; ++i) {
-    //TODO: Sine.
-  }
-}
-
-/// (Eigenfunction).^2 on [0, 2*pi];
-inline void
-ThetaEigenSquare(vector<double>& v) 
-{
-  std::fill(v.begin(), v.end(), M_PI);
-  v[0] = M_PI * 2;
-}
-
-/* PARAM SECTION END */
-
-// double PhiCalc (double root0M) {
-//   double J1a = gsl_sf_bessel_J1(root0M * RadiusA / RadiusL);
-//   double J1b = gsl_sf_bessel_J1(root0M * RadiusB / RadiusL);
-//   double J1  = gsl_sf_bessel_J1(root0M);
-//   double num = 
-//     (
-//      RadiusB / RadiusL * J1b
-//      - RadiusA / RadiusL * J1a
-//     ) / root0M;
-//   double den = std::pow(J1, 2) / 2; 
-//   return num / den;
-// }
-
-/* VALUE SERIES ACCUMULATION */
 void 
 CalcRhoAtZ0(const vector<double>& dx, vector<gsl_complex>& ret, double z0) {
   const auto Len = dx.size();
@@ -135,9 +94,9 @@ main (int argc, char* argv[])
 
   /* Calc param Psi[n,m] */
   auto thetaInt = vector<double> (FuncN * 2 + 1);
-  ThetaEigenIntegral(thetaInt);
+  ParamValue::ThetaEigenIntegral(thetaInt);
   auto thetaEig = vector<double> (FuncN * 2 + 1);
-  ThetaEigenSquare(thetaEig);
+  ParamValue::ThetaEigenSquare(thetaEig);
 
   auto besselInt = vector< vector<double> > (FuncN);
   for (auto n = 0; n < FuncN; ++n) {
@@ -146,7 +105,7 @@ main (int argc, char* argv[])
     for (auto m = 0; m < Terms; ++m) {
       besselInt[n].emplace_back(
         std::pow(BesselRoots[n][m], X)
-        * BesselIntegral(n, RadiusB * xxx, RadiusB * xxx)
+        * ParamValue::BesselIntegral(n, RadiusB * xxx, RadiusB * xxx)
         );
     // TODO  
     }
@@ -156,8 +115,9 @@ main (int argc, char* argv[])
   for (auto n = 0; n < FuncN; ++n) {
     besselInt[n].clear();
     besselInt[n].reserve(Terms);
-    for (auto m = 0; m < Terms; ++m) {
+    for (auto rt: BesselRoots[n]) {
       besselInt[n].emplace_back(
+        ParamValue::BesselEigenSquare(n, rt)
   //TODO
         );
     }
@@ -171,7 +131,7 @@ main (int argc, char* argv[])
   {
     dx.clear();
     dx.reserve(Plots);
-    for (auto i = 0; i < Plots; i += 1) {
+    for (auto i = 0; i < Plots; ++i) {
       dx.push_back(RadiusL * i / (Grids-1));
     }
   }
@@ -183,7 +143,7 @@ main (int argc, char* argv[])
     }
   }
 
-  println("Grid Generate Complete.");
+  println("Grids and Layers setup.");
 
   for (int i = 0; i < Layers; i++) {
     gsl_complex zero;
@@ -193,7 +153,7 @@ main (int argc, char* argv[])
     printf("\tCalc Layers %d\tat Z = %.8f\n", i, z);
     CalcRhoAtZ0(dx, val[i], z);
   }
-  printf("Layers Complete.\n");
+  println("Layers Complete.");
 
   auto tEval = std::chrono::high_resolution_clock::now();
 
@@ -210,4 +170,3 @@ main (int argc, char* argv[])
         );
   return 0;
 }
-
