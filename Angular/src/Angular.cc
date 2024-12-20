@@ -21,14 +21,14 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-constexpr int Terms = 10000; // Bessel root num m in mu^(n)_m
+constexpr int Terms = 5000; // Bessel root num m in mu^(n)_m
 constexpr int FuncN = 100;   // Bessel func num n in mu(n)_m
 vector< vector<double> > BesselRoots (FuncN);
 // vector< double > phi (Terms, 0);
 
 constexpr int Grids = 5001; // Plotting R-dir Total Grids.
 constexpr int Plots = 100;  // Plotting R-dir calculated Grids.
-constexpr int Layers = 201; // Plotting Z-dir 
+constexpr int Layers = 2;// 201; // Plotting Z-dir 
 vector< double > dx;
 vector< double > dz;
 vector< vector<gsl_complex> > val (Layers);
@@ -60,7 +60,7 @@ CalcRhoAtZ0(const vector<double>& dx, vector<gsl_complex>& ret, double z0) {
 }
 /* VALUE ACCUMULATION END */ 
 
-  int
+int
 main (int argc, char* argv[])
 {
   if (argc == 1) {
@@ -104,22 +104,22 @@ main (int argc, char* argv[])
     besselInt[n].reserve(Terms);
     for (auto m = 0; m < Terms; ++m) {
       besselInt[n].emplace_back(
-        std::pow(BesselRoots[n][m], X)
-        * ParamValue::BesselIntegral(n, RadiusB * xxx, RadiusB * xxx)
-        );
-    // TODO  
+                                std::pow(BesselRoots[n][m], X)
+                                * ParamValue::BesselIntegral(n, RadiusB * xxx, RadiusB * xxx)
+                               );
+      // TODO  
     }
   }
-  
+
   auto besselEig = vector< vector<double> > (FuncN);
   for (auto n = 0; n < FuncN; ++n) {
     besselInt[n].clear();
     besselInt[n].reserve(Terms);
     for (auto rt: BesselRoots[n]) {
       besselInt[n].emplace_back(
-        ParamValue::BesselEigenSquare(n, rt)
-  //TODO
-        );
+                                ParamValue::BesselEigenSquare(n, rt)
+                                //TODO
+                               );
     }
   }
 
@@ -145,6 +145,7 @@ main (int argc, char* argv[])
 
   println("Grids and Layers setup.");
 
+  /* Calc Field */
   for (int i = 0; i < Layers; i++) {
     gsl_complex zero;
     GSL_SET_COMPLEX(&zero, 0, 0);

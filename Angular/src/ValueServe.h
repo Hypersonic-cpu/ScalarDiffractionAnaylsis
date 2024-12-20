@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <algorithm>
+#include <gsl/gsl_complex.h>
 
 using std::vector;
 
@@ -27,12 +29,12 @@ class ParamValue {
 };
 
 class FieldGenerate {
-
-    /// <summary> Generate all terms of the seires. </summary>
-    /// <param name="v"> vecOf</param>
+    /// <param name="ret"> vec for theta = 0..pi </param>
     static void 
-    TermsMatrixAtZ0 (vector<double> const& BesselRoots,
-                     vector<double> const& ThetaParams,
-                     vector< vector<double> > const& EigenParams,
-                     vector< vector< vector<double> > >& v);
+    FieldThetaDirArray(const double rho, const double L, const double z,
+                                      const double WaveNum, 
+                                      vector< double > const & theta, 
+                                      vector< vector<double> > const & BesselRoots,
+                                      vector< vector<double> > const & Params,
+                                      vector<gsl_complex>& ret);
 };
