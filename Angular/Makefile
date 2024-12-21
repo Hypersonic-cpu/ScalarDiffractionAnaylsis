@@ -17,7 +17,7 @@ TGT_FILE  := $(BUILD_DIR)/main
 
 CFLAGS 		+= -g -O2
 CFLAGS 		+= -Wall
-CFLAGS 		+= -I/usr/local/Cellar/llvm/19.1.3/include
+LDFLAGS		+= -L/usr/local/opt/llvm/lib/c++ -L/usr/local/opt/llvm/lib/unwind -lunwind
 CFLAGS 		+= -I/usr/local/include
 CFLAGS 		+= -I../Symmetric/src
 CFLAGS 		+= -std=c++23
@@ -26,11 +26,8 @@ LDFLAGS		+= -L/usr/local/lib -lgsl -lgslcblas -lm
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-# $(BUILD_DIR)/%.elf: $(BUILD_DIR)/%.o
-# 	$(CXX) -o $@ $< $(LDFLAGS) 
-
 $(TGT_FILE): $(OBJ_FILES)
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@ $^ $(LDFLAGS) 
 
 .PHONY: clean pre_build all
 .PRECIOUS: $(TGT_FILE)

@@ -6,3 +6,5 @@ gsl-2.8/
 */compile_flags.txt
 Symmetric/build/
 .vscode/
+log/
+*/log/
