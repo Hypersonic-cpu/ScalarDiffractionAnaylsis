@@ -7,6 +7,8 @@
 #include <cassert>
 #include <print>
 
+#include <omp.h>
+
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_complex.h>
 #include <gsl/gsl_complex_math.h>
@@ -21,18 +23,17 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-constexpr int Terms = 2000; // Bessel root num m in mu^(n)_m
-constexpr int FuncN = 201;   // Bessel func num n in mu(n)_m
+constexpr int Terms = 5000; // Bessel root num m in mu^(n)_m
+constexpr int FuncN = 121;   // Bessel func num n in mu(n)_m
 vector< vector<double> > BesselRoots (FuncN);
 vector< vector<double> > param (FuncN << 1);
 
-constexpr int Grids = 3001; // Plotting R-dir Total Grids.
-constexpr int Plots = 150;  // Plotting R-dir calculated Grids.
-constexpr int Layers = 2;// 201; // Plotting Z-dir 
+constexpr int Grids = 4001; // Plotting R-dir Total Grids.
+constexpr int Plots = 200;  // Plotting R-dir calculated Grids.
+constexpr int Layers = 5;// 201; // Plotting Z-dir 
 vector< double > dRho;
 vector< double > dTheta;
 vector< double > dz;
-vector< vector<gsl_complex> > field;
 
 double const RadiusB = 0.10e-3; // 100 um 
 double const RadiusA = 0.01e-3;
@@ -85,7 +86,6 @@ auto const IntervalSet = std::vector < std::vector<std::pair<R,R> > >
 inline auto 
 CalcParamAll(int graphCode) {
   auto thetaInt = vector<double> (FuncN * 2);
-  // TODO {}
   ParamValue::ThetaIntegral(IntervalSet[graphCode], thetaInt);
   auto thetaEig = vector<double> (FuncN * 2);
   ParamValue::ThetaEigenSquare(thetaEig);
@@ -175,33 +175,38 @@ main (int argc, char* argv[])
     }
   }
   println("Grids and Layers setup.");
-
-  /* Calc Field */
-  field.resize(Plots);
-  for (auto idxRho = 0; idxRho < Plots; ++idxRho) {
-    if (idxRho % 10 == 0) { println("[RHO  ] processing #{}", idxRho); }
-    FieldGenerate::FieldThetaDirArray(dRho[idxRho], RadiusL, Z0, 
-                                      WaveNumK,
-                                      dTheta, 
-                                      BesselRoots,
-                                      param,
-                                      field[idxRho]
-                                     );
-  }
   
-  println("Field computation complete.");
+  /* Calc Field */
+#pragma omp parallel for 
+  for (auto zIdx = 1; zIdx < Layers; ++zIdx) {
+    print("[OMP  ] Z = {:.8g} by thread #{}", dz[zIdx], omp_get_thread_num());
+    vector< vector<gsl_complex> > field;
+    field.clear();
+    field.resize(Plots);
+    for (auto idxRho = 0; idxRho < Plots; ++idxRho) {
+      if (idxRho % 10 == 0) { println("[RHO  ] processing #{}", idxRho); }
+      FieldGenerate::FieldThetaDirArray(dRho[idxRho], RadiusL, dz[zIdx],
+                                        WaveNumK,
+                                        dTheta, 
+                                        BesselRoots,
+                                        param,
+                                        field[idxRho]
+                                       );
+    }
 
+    println("Field computation complete.");
+
+    auto writeFile = OutputCsvPrefix + "L" + std::to_string(zIdx) + "-";
+    auto writer = 
+      CSVWriter("/Users/kong/Documents/Proj/NumericalC/DataGen/" + writeFile);
+    assert(writer.WriteVector({dz[zIdx]}      , "dz.csv")         );
+    assert(writer.WriteVector(dTheta  , "dTheta.csv")         );
+    assert(writer.WriteVector(dRho    , "dRho.csv")       );
+    assert(writer.WriteMatrix(field, "fld.csv")  );
+    println("Write with prefix {} finished.", OutputCsvPrefix);
+
+  }
   auto tEval = std::chrono::high_resolution_clock::now();
-
-  auto writer = 
-    CSVWriter("/Users/kong/Documents/Proj/NumericalC/DataGen/" + OutputCsvPrefix);
-  auto a = vector<double> { 1,2,3 };
-  assert(writer.WriteVector(dz      , "dz.csv")         );
-  assert(writer.WriteVector(dTheta  , "dTheta.csv")         );
-  assert(writer.WriteVector(dRho    , "dRho.csv")       );
-  assert(writer.WriteMatrix(field, "fld.csv")  );
-  println("Write with prefix {} finished.", OutputCsvPrefix);
-
   auto durationEval = std::chrono::duration_cast<std::chrono::milliseconds>(tEval - tPhiParam);
   println("[Summary] time used:\nRoot Calc\t{:12}ms\nParam Calc\t{:12}ms\nEval Vals\t{:12}ms\n",
          durationRoot.count(),

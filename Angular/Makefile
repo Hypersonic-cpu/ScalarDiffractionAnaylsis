@@ -13,15 +13,17 @@ BUILD_DIR := build
 
 SRC_FILES := $(wildcard $(SRC_DIR)/*.cc)
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SRC_FILES))
-TGT_FILE  := $(BUILD_DIR)/main
+TGT_FILE  := $(BUILD_DIR)/angular
 
 CFLAGS 		+= -g -O2
 CFLAGS 		+= -Wall
 LDFLAGS		+= -L/usr/local/opt/llvm/lib/c++ -L/usr/local/opt/llvm/lib/unwind -lunwind
 CFLAGS 		+= -I/usr/local/include
+CFLAGS  	+= -fopenmp
 CFLAGS 		+= -I../Symmetric/src
 CFLAGS 		+= -std=c++23
 LDFLAGS		+= -L/usr/local/lib -lgsl -lgslcblas -lm 
+LDFLAGS 	+= -fopenmp
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc
 	$(CXX) $(CFLAGS) -c -o $@ $<

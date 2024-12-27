@@ -9,7 +9,7 @@
 #include <gsl/gsl_complex.h>
 #include <gsl/gsl_complex_math.h>
 
-#include "LoadData.h"
+#include "Loader.hpp"
 
 using std::vector;
 using std::cout;
@@ -17,21 +17,21 @@ using std::cin;
 using std::endl;
 
 constexpr int N = 1;
-constexpr int Terms = 100000;
-std::string const OutputCsvPrefix = "/Users/kong/Documents/Proj/NumericalC/DataGen/CylindarTest/";
+constexpr int Terms = 20000;
+std::string const OutputCsvPrefix = "/Users/kong/Documents/Proj/NumericalC/DataGen/";
 vector< vector<double> > BesselRoots (N);
 vector< double > phi (Terms, 0);
 
-constexpr int Grids = 5001;
-constexpr int Plots = 100;
+constexpr int Grids = 30001;
+constexpr int Plots = 200;
 constexpr int Layers = 201;
 vector< double > dx;
 vector< double > dz;
 vector< vector<gsl_complex> > val (Layers);
 
 double const RadiusB = 0.10e-3; // 100 um 
-double const RadiusA = 0.04e-3;
-double const RadiusL = 99e-3; // 50 mm
+double const RadiusA = 0.01e-3;
+double const RadiusL = 99e-3; // 2L = 180 mm
 double const WaveLen = 1000.0e-9;
 double const WaveNumK= 2.0 * M_PI / WaveLen;
 
@@ -72,6 +72,7 @@ int
 main (int argc, char* argv[])
 {
   double Z0 = std::stod(argv[1]);
+  auto outputName = std::string(argv[2]);
   printf("Z0\t%.8f\n", Z0);
 
   auto tStart = std::chrono::high_resolution_clock::now();
@@ -139,10 +140,10 @@ main (int argc, char* argv[])
 
   auto tEval = std::chrono::high_resolution_clock::now();
 
-  auto writer = CSVWriter(OutputCsvPrefix);
-  writer.WriteVector(dz, "dz-test.csv");
-  writer.WriteVector(dx, "dx-test.csv");
-  writer.WriteMatrix(val, "val-test.csv");
+  auto writer = CSVWriter(OutputCsvPrefix + outputName);
+  writer.WriteVector(dz, "-dz.csv");
+  writer.WriteVector(dx, "-dx.csv");
+  writer.WriteMatrix(val, "-val.csv");
   
   auto durationRoot = std::chrono::duration_cast<std::chrono::milliseconds>(tRootOver - tStart);
   auto durationParam= std::chrono::duration_cast<std::chrono::milliseconds>(tPhiParam - tRootOver);
