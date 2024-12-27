@@ -21,18 +21,18 @@ using std::cout;
 using std::cin;
 using std::endl;
 
-constexpr int Terms = 10000; // Bessel root num m in mu^(n)_m
-constexpr int FuncN = 121;   // Bessel func num n in mu(n)_m
+constexpr int Terms = 2000; // Bessel root num m in mu^(n)_m
+constexpr int FuncN = 201;   // Bessel func num n in mu(n)_m
 vector< vector<double> > BesselRoots (FuncN);
 vector< vector<double> > param (FuncN << 1);
 
-constexpr int Grids = 1001; // Plotting R-dir Total Grids.
-constexpr int Plots = 100;  // Plotting R-dir calculated Grids.
+constexpr int Grids = 3001; // Plotting R-dir Total Grids.
+constexpr int Plots = 150;  // Plotting R-dir calculated Grids.
 constexpr int Layers = 2;// 201; // Plotting Z-dir 
 vector< double > dRho;
 vector< double > dTheta;
 vector< double > dz;
-vector< vector< vector<gsl_complex> > > field (Layers);
+vector< vector<gsl_complex> > field;
 
 double const RadiusB = 0.10e-3; // 100 um 
 double const RadiusA = 0.01e-3;
@@ -44,7 +44,7 @@ double const WaveNumK= 2.0 * M_PI / WaveLen;
 inline auto
 PrintHelpExit() {
     print("{}", "Usage:\n"
-          "  argv[1]\tZ-direction distance in SI unit\n"
+          "  argv[1]\tGraph code,\n"
           "  argv[2]\tPathPrefix,\n"
           "         \tthe file will be ../DataGen/{preifx}-mtx|dz|dx.csv\n"
          );
@@ -62,12 +62,12 @@ CalcBesselRoots() {
   }
 }
 
-auto const HalfWidth = M_PI * 4 / 180;
+auto const HalfWidth = M_PI * 2.5 / 180;
 auto const IntervalSet = std::vector < std::vector<std::pair<R,R> > >
 {
   {
-    std::make_pair(3.0 / 180 * M_PI, 177.0 / 180 * M_PI),
-    std::make_pair(183.0 / 180 * M_PI , 357.0 / 180 * M_PI)
+    std::make_pair(0.0 * M_PI + HalfWidth, 1.0 * M_PI - HalfWidth),
+    std::make_pair(1.0 * M_PI + HalfWidth, 2.0 * M_PI - HalfWidth),
   },
   {
     std::make_pair(0.0 * M_PI + HalfWidth, 0.5 * M_PI - HalfWidth),
@@ -76,16 +76,17 @@ auto const IntervalSet = std::vector < std::vector<std::pair<R,R> > >
     std::make_pair(1.5 * M_PI + HalfWidth, 2.0 * M_PI - HalfWidth),
   },
   {
-    std::make_pair(3.0 / 180 * M_PI, 177.0 / 180 * M_PI),
-    std::make_pair(183.0 / 180 * M_PI , 357.0 / 180 * M_PI)
+    std::make_pair(0.0 * M_PI + HalfWidth, 0.75 * M_PI - HalfWidth),
+    std::make_pair(0.75 * M_PI + HalfWidth, 1.25 * M_PI - HalfWidth),
+    std::make_pair(1.25 * M_PI + HalfWidth, 2.0 * M_PI - HalfWidth),
   },
 };
 
 inline auto 
-CalcParamAll() {
+CalcParamAll(int graphCode) {
   auto thetaInt = vector<double> (FuncN * 2);
   // TODO {}
-  ParamValue::ThetaIntegral(IntervalSet[1], thetaInt);
+  ParamValue::ThetaIntegral(IntervalSet[graphCode], thetaInt);
   auto thetaEig = vector<double> (FuncN * 2);
   ParamValue::ThetaEigenSquare(thetaEig);
   auto besselInt = vector< vector<double> > (FuncN);
@@ -116,7 +117,7 @@ CalcParamAll() {
   /* Assign */
   for (auto n = 0; n < FuncN * 2; ++n) {
     auto th_ = thetaInt[n] / thetaEig[n];
-    println("{}, {}", n,  th_);
+    // println("{}, {}", n,  th_);
     auto usedN = n >= FuncN ? (n-FuncN) : n;
     param[n].resize(Terms);
     std::transform(
@@ -128,18 +129,15 @@ CalcParamAll() {
                      { return int_ / eig_ * th_; }
                   );
   }
-
-  // println("{}", param[1]);
-  // println("{}", param[2]);
-  // println("{}", param[4]);
-  // println("{}", paraM[5]);
 }
 
 int
 main (int argc, char* argv[])
 {
   if (argc == 1) { PrintHelpExit(); }
-  std::string const OutputCsvPrefix (argv[1]);
+  assert(argc == 3);
+  std::string const OutputCsvPrefix (argv[2]);
+  short const GraphCode (std::atoi(argv[1]));
 
   auto tStart = std::chrono::high_resolution_clock::now();
 
@@ -151,7 +149,7 @@ main (int argc, char* argv[])
   println("Root calc over: {}ms", durationRoot.count());
 
   /* Calc param Param[n,m] */
-  CalcParamAll();
+  CalcParamAll(GraphCode);
 
   auto tPhiParam = std::chrono::high_resolution_clock::now();
   auto durationParam= std::chrono::duration_cast<std::chrono::milliseconds>(tPhiParam - tRootOver);
@@ -166,7 +164,7 @@ main (int argc, char* argv[])
   }
   {
     dz.resize(Layers);
-    for (auto i = 1; i < Layers; ++i) {
+    for (auto i = 0; i < Layers; ++i) {
       dz[i] = Z0 * i / (Layers-1);
     }
   }
@@ -179,21 +177,19 @@ main (int argc, char* argv[])
   println("Grids and Layers setup.");
 
   /* Calc Field */
-  for (auto idxZ = 1; idxZ < Layers; ++idxZ) {
-    println("\t[layer] processing #{}", idxZ);
-    field[idxZ].resize(Plots);
-    for (auto idxRho = 0; idxRho < Plots; ++idxRho) {
-      println("rho #{}", idxRho);
-      FieldGenerate::FieldThetaDirArray(dRho[idxRho], RadiusL, dz[idxZ], 
-                                        WaveNumK,
-                                        dTheta, 
-                                        BesselRoots,
-                                        param,
-                                        field[idxZ][idxRho]
-                                       );
-    }
+  field.resize(Plots);
+  for (auto idxRho = 0; idxRho < Plots; ++idxRho) {
+    if (idxRho % 10 == 0) { println("[RHO  ] processing #{}", idxRho); }
+    FieldGenerate::FieldThetaDirArray(dRho[idxRho], RadiusL, Z0, 
+                                      WaveNumK,
+                                      dTheta, 
+                                      BesselRoots,
+                                      param,
+                                      field[idxRho]
+                                     );
   }
-  println("Layers Complete.");
+  
+  println("Field computation complete.");
 
   auto tEval = std::chrono::high_resolution_clock::now();
 
@@ -203,8 +199,7 @@ main (int argc, char* argv[])
   assert(writer.WriteVector(dz      , "dz.csv")         );
   assert(writer.WriteVector(dTheta  , "dTheta.csv")         );
   assert(writer.WriteVector(dRho    , "dRho.csv")       );
-  assert(writer.WriteMatrix(field[0], "val.csv")  );
-  assert(writer.WriteMatrix(field[1], "fld.csv")  );
+  assert(writer.WriteMatrix(field, "fld.csv")  );
   println("Write with prefix {} finished.", OutputCsvPrefix);
 
   auto durationEval = std::chrono::duration_cast<std::chrono::milliseconds>(tEval - tPhiParam);
